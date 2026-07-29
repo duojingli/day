@@ -1,0 +1,30 @@
+{
+  "name": "日记本 · 治愈手帐",
+  "short_name": "日记本",
+  "description": "韩系极简治愈手帐：明日计划与成功日记，本地保存，无广告无打扰。",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#f5f0e7",
+  "theme_color": "#f5f0e7",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "icons/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "categories": ["lifestyle", "productivity"],
+  "lang": "zh-CN"
+}
