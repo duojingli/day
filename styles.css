@@ -235,6 +235,24 @@ body {
   margin-top: 2px;
 }
 
+/* 自定义本：弱化日期条（无左右箭头，仅点击打开日历） */
+.date-bar-plain {
+  margin-bottom: 14px;
+}
+
+.date-bar-plain .date-pill {
+  max-width: 150px;
+  padding: 8px 14px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.55);
+}
+
+.date-bar-plain .date-main {
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--ink-light);
+}
+
 /* ===== 内容面板 ===== */
 .panel {
   background: rgba(255, 253, 250, 0.78);
@@ -242,6 +260,17 @@ body {
   box-shadow: var(--shadow);
   padding: 18px 16px;
   margin-bottom: 16px;
+}
+
+/* 自定义本面板：让底部“写新记录”框贴在底部 */
+.panel-custom {
+  display: flex;
+  flex-direction: column;
+  min-height: calc(100dvh - 170px);
+}
+
+.panel-custom .entry-list {
+  flex: 1;
 }
 
 .panel-title {
@@ -541,6 +570,13 @@ body {
 
 #modal.show .modal-backdrop.in {
   opacity: 1;
+}
+
+/* 全屏编辑器：铺满整屏，去掉底部留白与上对齐 */
+.modal-backdrop.editor-backdrop {
+  padding: 0;
+  align-items: stretch;
+  justify-content: stretch;
 }
 
 .modal-panel {
@@ -938,9 +974,128 @@ body {
 
 .fab-write:active { transform: scale(0.98); opacity: 0.92; }
 
-/* ===== 富文本编辑器 ===== */
-.editor-modal { max-height: 92vh; }
-.editor-title { margin-bottom: 12px; }
+/* 自定义本底部：单框（无图标、无多余输入框） */
+.custom-new-box {
+  margin-top: 12px;
+  padding: 16px;
+  border: 1.5px dashed var(--paper-dark);
+  border-radius: var(--radius-sm);
+  background: var(--white);
+  color: var(--ink-muted);
+  cursor: pointer;
+  transition: var(--transition);
+  box-shadow: var(--shadow-soft);
+}
+
+.custom-new-box:active {
+  transform: scale(0.98);
+  border-color: var(--nb-color, var(--ink-muted));
+  background: var(--paper-soft);
+}
+
+.custom-new-placeholder {
+  font-size: 14px;
+  font-weight: 400;
+}
+
+/* ===== 富文本编辑器（全屏，仿手机原生笔记） ===== */
+.editor-fullscreen {
+  position: fixed;
+  inset: 0;
+  max-width: 100%;
+  max-height: 100%;
+  width: 100%;
+  height: 100%;
+  border-radius: 0;
+  padding: 0;
+  box-shadow: none;
+  transform: none;
+  display: flex;
+  flex-direction: column;
+}
+
+#modal.show .modal-backdrop.in .editor-fullscreen {
+  transform: none;
+}
+
+.editor-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: calc(10px + env(safe-area-inset-top)) 12px 10px;
+  border-bottom: 1px solid var(--line);
+  background: var(--white);
+  flex-shrink: 0;
+}
+
+.editor-header-title {
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--ink);
+}
+
+.editor-header-btn {
+  border: none;
+  background: transparent;
+  color: var(--ink-light);
+  font-size: 15px;
+  padding: 6px 10px;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.editor-header-btn.primary {
+  color: var(--nb-color, var(--success));
+  font-weight: 500;
+}
+
+.editor-title {
+  margin: 0;
+  border: none;
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
+  padding: 14px 16px;
+  font-size: 18px;
+  font-weight: 500;
+  flex-shrink: 0;
+}
+
+.editor-toolbar {
+  flex-shrink: 0;
+  margin: 0;
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
+  background: var(--paper-soft);
+}
+
+/* 进一步缩小工具栏按钮，给内容更多空间 */
+.editor-fullscreen .tool-btn {
+  min-width: 32px;
+  height: 32px;
+  font-size: 14px;
+  padding: 0 7px;
+}
+
+.editor-fullscreen .tool-select {
+  padding: 5px 7px;
+  font-size: 12px;
+}
+
+.editor-fullscreen .color-swatch {
+  width: 22px;
+  height: 22px;
+}
+
+.editor-fullscreen .editor-area {
+  flex: 1;
+  border: none;
+  border-radius: 0;
+  max-height: none;
+  min-height: auto;
+  padding: 16px 16px calc(16px + env(safe-area-inset-bottom));
+  font-size: 17px;
+  line-height: 1.8;
+}
 
 .editor-toolbar {
   display: flex;

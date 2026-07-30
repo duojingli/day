@@ -107,11 +107,32 @@
     return yiq >= 160 ? '#4a443d' : '#fffdfa';
   }
 
+  const patternCache = new Map();
+
+  // 用 canvas 把 emoji 画成 PNG 纹理贴图，绕过 SVG background 中 emoji 经常无法
+  // 渲染成彩色/甚至不渲染的问题，保证手机端纹理可见且可区分。
   function patternBackground(color, patternKey) {
     const p = PATTERNS.find(x => x.key === patternKey) || PATTERNS[0];
     if (!p.glyph) return color;
-    const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='64' height='64'><text x='32' y='42' font-size='22' text-anchor='middle' opacity='0.13'>${p.glyph}</text></svg>`;
-    return `${color} url("data:image/svg+xml,${encodeURIComponent(svg)}")`;
+    const key = `${color}|${p.glyph}`;
+    if (patternCache.has(key)) return patternCache.get(key);
+
+    const size = 80;
+    const c = document.createElement('canvas');
+    c.width = size; c.height = size;
+    const ctx = c.getContext('2d');
+    ctx.fillStyle = color;
+    ctx.fillRect(0, 0, size, size);
+
+    ctx.font = `${Math.round(size * 0.42)}px "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", "Android Emoji", emoji, sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.globalAlpha = 0.32;
+    ctx.fillText(p.glyph, size / 2, size / 2 + size * 0.04);
+
+    const url = `url(${c.toDataURL('image/png')})`;
+    patternCache.set(key, url);
+    return `${color} ${url}`;
   }
 
   // ===== 状态 =====
@@ -171,6 +192,7 @@
   migrateState();
   const view = { notebookId: null, dates: {}, modal: null, editing: null };
   const firedReminders = new Set();
+  let suppressOpen = false; // 长按后抑制紧接着的误触“打开”点击
 
   function getNotebook(id) { return state.notebooks.find(n => n.id === id); }
   function currentDate(nb) {
@@ -243,6 +265,7 @@
     const date = currentDate(nb);
     const entries = getEntries(nb, date);
     const title = escapeHtml(nb.title);
+    const isCustom = nb.kind === 'custom';
 
     let body = '';
     if (nb.kind === 'tomorrow') body = tomorrowBody(nb, date, entries);
@@ -256,13 +279,13 @@
           <div class="top-title">${title}</div>
           <button class="icon-btn" data-action="open-reminders" aria-label="提醒设置">⏰</button>
         </div>
-        <div class="date-bar">
-          <button class="icon-btn" data-action="prev-date" aria-label="上一天">‹</button>
+        <div class="date-bar ${isCustom ? 'date-bar-plain' : ''}">
+          ${isCustom ? '' : `<button class="icon-btn" data-action="prev-date" aria-label="上一天">‹</button>`}
           <div class="date-pill" data-action="open-calendar">
             <div class="date-main">${friendlyDate(date)} · ${weekday(date)}</div>
-            <div class="date-sub">${date} · 点击查看日历</div>
+            ${isCustom ? '' : `<div class="date-sub">${date} · 点击查看日历</div>`}
           </div>
-          <button class="icon-btn" data-action="next-date" aria-label="下一天">›</button>
+          ${isCustom ? '' : `<button class="icon-btn" data-action="next-date" aria-label="下一天">›</button>`}
         </div>
         ${body}
       </div>
@@ -389,10 +412,11 @@
   function customBody(nb, date, entries) {
     const list = entries.length ? entries.map(e => customCard(e)).join('') : '';
     return `
-      <div class="panel">
-        <p class="panel-title">${date === todayStr() ? '今日记录' : `${date} 的记录`}</p>
-        <div class="entry-list">${list || emptyState(nb)}</div>
-        <button class="fab-write" data-action="write-new">✍️ 写新记录</button>
+      <div class="panel panel-custom">
+        <div class="entry-list">${list}</div>
+        <div class="custom-new-box" data-action="write-new">
+          <span class="custom-new-placeholder">${entries.length ? '继续写点什么…' : '写新记录…'}</span>
+        </div>
       </div>
     `;
   }
@@ -459,17 +483,23 @@
     modalRoot.classList.add('show');
     requestAnimationFrame(() => {
       const bd = modalRoot.querySelector('.modal-backdrop');
-      if (bd) bd.classList.add('in');
+      if (bd) {
+        bd.classList.add('in');
+        if (bd.querySelector('.editor-fullscreen')) bd.classList.add('editor-backdrop');
+      }
     });
   }
 
   function closeModal() {
+    suppressOpen = false;
     modalRoot.classList.remove('show');
     modalRoot.setAttribute('aria-hidden', 'true');
     setTimeout(() => { modalRoot.innerHTML = ''; }, 250);
   }
 
   modalRoot.addEventListener('click', e => {
+    // 长按松开后的“误触点击”不应点掉确认弹窗
+    if (suppressOpen) { suppressOpen = false; return; }
     if (e.target === e.currentTarget.querySelector('.modal-backdrop')) closeModal();
   });
 
@@ -569,7 +599,7 @@
       return CUSTOM_PATTERNS.map(p => `
         <button class="pattern-option ${p.key === selectedPattern ? 'selected' : ''}"
                 data-action="select-pattern" data-pattern="${p.key}"
-                style="background:${patternBackground(selectedColor, p.key)};color:${contrastText(selectedColor)}"
+                style="background:${selectedColor};color:${contrastText(selectedColor)}"
                 aria-label="${p.label}">${p.glyph || '无'}</button>
       `).join('');
     }
@@ -637,7 +667,7 @@
     openModal(`
       <div class="modal-panel">
         <div class="modal-title">每日提醒</div>
-        <p class="success-tip">到设置的时间会在打开 APP 时温柔提醒（无后台推送，不打扰）</p>
+        <p class="success-tip">到设置的时间、且日记本处于打开状态时，会温柔提醒你（纯前端无后台服务器，APP 完全关闭时无法自动弹窗）</p>
         <div id="reminder-list">
           ${state.notebooks.map(nb => `
             <div class="reminder-row">
@@ -758,8 +788,12 @@
     const isEdit = !!entryId;
 
     openModal(`
-      <div class="modal-panel editor-modal" id="entry-editor-panel">
-        <div class="modal-title">${isEdit ? '编辑记录' : '写新记录'}</div>
+      <div class="modal-panel editor-fullscreen" id="entry-editor-panel">
+        <div class="editor-header">
+          <button type="button" class="editor-header-btn" data-action="close-modal">取消</button>
+          <div class="editor-header-title">${isEdit ? '编辑记录' : '写新记录'}</div>
+          <button type="button" class="editor-header-btn primary" data-action="save-editor">完成</button>
+        </div>
         <input type="text" id="entry-title" class="form-input editor-title" maxlength="40" placeholder="标题（可选）" value="${escapeHtml(titleVal)}">
         <div class="editor-toolbar" id="editor-toolbar">
           <button type="button" class="tool-btn" data-cmd="bold" onmousedown="event.preventDefault()"><b>B</b></button>
@@ -782,8 +816,6 @@
         </div>
         <div id="entry-editor" class="editor-area" contenteditable="true" data-placeholder="写点什么…"></div>
         <input type="file" id="editor-file" accept="image/*" hidden>
-        <button class="modal-close primary" data-action="save-editor">保存</button>
-        <button class="modal-close" data-action="close-modal">取消</button>
       </div>
     `);
 
@@ -1091,7 +1123,6 @@
   // ===== 长按删除自建本子（Pointer 事件统一鼠标/触摸）=====
   let pressTimer = null;
   let pressTarget = null;
-  let suppressOpen = false;
   const LONG_PRESS_MS = 600;
   const pressStart = { x: 0, y: 0 };
 
