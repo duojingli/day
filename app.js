@@ -20,14 +20,66 @@
   ];
 
   const PATTERNS = [
+    // —— 主功能本专用（自定义本不可选）——
     { key: 'snow', glyph: '❄️', label: '雪花' },
     { key: 'floral', glyph: '🌸', label: '碎花' },
+    // —— 原有通用 ——
     { key: 'dots', glyph: '•', label: '圆点' },
     { key: 'leaves', glyph: '🍃', label: '落叶' },
     { key: 'stars', glyph: '✦', label: '星星' },
     { key: 'hearts', glyph: '🤍', label: '爱心' },
     { key: 'waves', glyph: '〜', label: '波浪' },
-    { key: 'none', glyph: '', label: '纯色' }
+    { key: 'none', glyph: '', label: '纯色' },
+    // —— 新增自定义本纹理 ——
+    { key: 'sun', glyph: '☀️', label: '太阳' },
+    { key: 'rainbow', glyph: '🌈', label: '彩虹' },
+    { key: 'star', glyph: '🌟', label: '亮星' },
+    { key: 'gift', glyph: '🎁', label: '礼物' },
+    { key: 'sparkles', glyph: '✨', label: '闪光' },
+    { key: 'party', glyph: '🎊', label: '彩球' },
+    { key: 'tada', glyph: '🎉', label: '礼花' },
+    { key: 'hearts2', glyph: '💖', label: '心心' },
+    { key: 'hearts3', glyph: '💗', label: '粉心' },
+    { key: 'strawberry', glyph: '🍓', label: '草莓' },
+    { key: 'apple', glyph: '🍎', label: '苹果' },
+    { key: 'orange', glyph: '🍊', label: '橘子' },
+    { key: 'watermelon', glyph: '🍉', label: '西瓜' },
+    { key: 'burger', glyph: '🍔', label: '汉堡' },
+    { key: 'icecream', glyph: '🍦', label: '冰淇淋' },
+    { key: 'cocktail', glyph: '🍸', label: '鸡尾酒' },
+    { key: 'greenapple', glyph: '🍏', label: '青苹果' },
+    { key: 'cherry', glyph: '🍒', label: '樱桃' },
+    { key: 'grapes', glyph: '🍇', label: '葡萄' },
+    { key: 'peach', glyph: '🍑', label: '桃子' },
+    { key: 'pineapple', glyph: '🍍', label: '菠萝' },
+    { key: 'milk', glyph: '🥛', label: '牛奶' },
+    { key: 'pretzel', glyph: '🥨', label: '椒盐卷' },
+    { key: 'coconut', glyph: '🥥', label: '椰子' },
+    { key: 'kiwi', glyph: '🥝', label: '猕猴桃' },
+    { key: 'clover', glyph: '🍀', label: '四叶草' },
+    { key: 'maple', glyph: '🍁', label: '枫叶' },
+    { key: 'blossom', glyph: '🌼', label: '小雏菊' },
+    { key: 'rosette', glyph: '🏵️', label: '玫瑰' },
+    { key: 'butterfly', glyph: '🦋', label: '蝴蝶' },
+    { key: 'peacock', glyph: '🦚', label: '孔雀' },
+    { key: 'swan', glyph: '🦢', label: '天鹅' },
+    { key: 'money', glyph: '🤑', label: '金币' },
+    { key: 'plane', glyph: '✈️', label: '飞机' },
+    { key: 'tea', glyph: '🍵', label: '茶' },
+    { key: 'bread', glyph: '🥖', label: '面包' },
+    { key: 'cupcake', glyph: '🧁', label: '杯子蛋糕' },
+    { key: 'pill', glyph: '💊', label: '药丸' },
+    { key: 'sprout', glyph: '🌱', label: '嫩芽' },
+    { key: 'paw', glyph: '🐾', label: '爪印' }
+  ];
+
+  // 自定义本可用纹理（排除主功能本专用的 snow/floral）
+  const CUSTOM_PATTERNS = PATTERNS.filter(p => p.key !== 'snow' && p.key !== 'floral');
+
+  // 富文本编辑器的文字颜色（与整体 Morandi 低饱和风格一致）
+  const NOTE_TEXT_COLORS = [
+    '#5b554c', '#8a8276', '#7a6f8e', '#9a7b6f',
+    '#6f8a7a', '#b08a8a', '#5b6b8a', '#a88a5b'
   ];
 
   // ===== 工具函数 =====
@@ -92,8 +144,32 @@
     }
   }
 
+  // 老用户本地数据平滑升级（幂等、异常不阻塞启动）
+  function migrateState() {
+    try {
+      state.notebooks.forEach(nb => {
+        if (nb.defaultFontSize === undefined) nb.defaultFontSize = 16;
+        if (nb.defaultColor === undefined) nb.defaultColor = '#5b554c';
+        Object.keys(nb.entries || {}).forEach(date => {
+          nb.entries[date] = (nb.entries[date] || []).map(e => {
+            if (e.html !== undefined || e.status !== undefined || e.text === undefined) return e;
+            const html = '<p>' + escapeHtml(e.text).replace(/\n/g, '</p><p>') + '</p>';
+            return {
+              id: e.id, html, title: '',
+              createdAt: Date.now(), updatedAt: Date.now(),
+              fontSize: 16, color: '#5b554c'
+            };
+          });
+        });
+      });
+    } catch (err) {
+      console.warn('本地数据迁移失败,已跳过', err);
+    }
+  }
+
   const state = loadState();
-  const view = { notebookId: null, dates: {}, modal: null };
+  migrateState();
+  const view = { notebookId: null, dates: {}, modal: null, editing: null };
   const firedReminders = new Set();
 
   function getNotebook(id) { return state.notebooks.find(n => n.id === id); }
@@ -135,7 +211,7 @@
 
   function homeView() {
     const cards = state.notebooks.map(nb => `
-      <button class="nb-card" data-action="open-notebook" data-id="${nb.id}"
+      <button class="nb-card" data-action="open-notebook" data-id="${nb.id}" data-fixed="${nb.fixed}"
               style="background:${patternBackground(nb.color, nb.pattern)};--nb-color:${nb.color};--nb-text:${contrastText(nb.color)}">
         <div>
           <div class="nb-emoji">${nb.emoji}</div>
@@ -311,24 +387,31 @@
 
   // 自定义本子
   function customBody(nb, date, entries) {
-    const list = entries.length ? entries.map(e => customItem(e)).join('') : '';
+    const list = entries.length ? entries.map(e => customCard(e)).join('') : '';
     return `
       <div class="panel">
         <p class="panel-title">${date === todayStr() ? '今日记录' : `${date} 的记录`}</p>
-        ${addInputRow(nb)}
         <div class="entry-list">${list || emptyState(nb)}</div>
+        <button class="fab-write" data-action="write-new">✍️ 写新记录</button>
       </div>
     `;
   }
 
-  function customItem(e) {
+  function customCard(e) {
+    const title = (e.title || firstLine(e.html) || '无标题').trim();
+    const preview = plainPreview(e.html || e.text || '', 80);
+    const time = friendlyTime(e.createdAt);
     return `
-      <div class="entry-item">
-        <div class="entry-main">
-          <div class="entry-text">${escapeHtml(e.text)}</div>
-          <div class="entry-actions">
-            <button class="action-btn btn-delete" data-action="delete-entry" data-id="${e.id}" title="删除">×</button>
-          </div>
+      <div class="note-card" data-id="${e.id}">
+        <div class="note-card-head">
+          <div class="note-card-title">${escapeHtml(title)}</div>
+          <div class="note-card-time">${time}</div>
+        </div>
+        <div class="note-card-preview">${escapeHtml(preview)}</div>
+        <div class="note-card-actions">
+          <button class="note-act" data-action="read-entry" data-id="${e.id}" title="阅读">👁</button>
+          <button class="note-act" data-action="edit-entry" data-id="${e.id}" title="编辑">✎</button>
+          <button class="note-act note-act-del" data-action="delete-entry" data-id="${e.id}" title="删除">🗑</button>
         </div>
       </div>
     `;
@@ -472,7 +555,7 @@
   // ===== 新建本子 =====
   function openAddNotebookModal() {
     let selectedColor = COLOR_OPTIONS[2].color;
-    let selectedPattern = 'dots';
+    let selectedPattern = 'sun';
 
     function colorSwatches() {
       return COLOR_OPTIONS.map(c => `
@@ -483,7 +566,7 @@
     }
 
     function patternSwatches() {
-      return PATTERNS.map(p => `
+      return CUSTOM_PATTERNS.map(p => `
         <button class="pattern-option ${p.key === selectedPattern ? 'selected' : ''}"
                 data-action="select-pattern" data-pattern="${p.key}"
                 style="background:${patternBackground(selectedColor, p.key)};color:${contrastText(selectedColor)}"
@@ -539,7 +622,8 @@
     const nb = {
       id: 'nb_' + generateId(), kind: 'custom', title,
       emoji: '📓', color, pattern,
-      fixed: false, reminder: null, entries: {}
+      fixed: false, reminder: null, entries: {},
+      defaultFontSize: 16, defaultColor: '#5b554c'
     };
     state.notebooks.push(nb);
     saveState();
@@ -576,11 +660,244 @@
     showToast(`${nb.title} 提醒已${value ? '设为 ' + value : '关闭'}`);
   }
 
+  // ===== 富文本 / 自定义本辅助 =====
+  function firstLine(html) {
+    const text = plainPreview(html, 500).replace(/\s+/g, ' ').trim();
+    return (text.split('\n')[0] || '').trim();
+  }
+
+  function plainPreview(html, len) {
+    let s = String(html)
+      .replace(/<br\s*\/?>/gi, '\n')
+      .replace(/<\/(p|div)>/gi, '\n')
+      .replace(/<[^>]+>/g, '')
+      .replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&')
+      .replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+      .replace(/&#39;/g, "'").replace(/&quot;/g, '"');
+    s = s.replace(/\n{2,}/g, '\n').trim();
+    return s.length > len ? s.slice(0, len) + '…' : s;
+  }
+
+  function friendlyTime(ts) {
+    if (!ts) return '';
+    const d = new Date(ts);
+    return `${pad(d.getMonth() + 1)}/${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  }
+
+  // 白名单消毒：仅放行 p/br/div/span/b/strong/i/em/u/img，图片仅 data:image
+  function sanitizeHtml(html) {
+    const tpl = document.createElement('template');
+    tpl.innerHTML = html;
+    const allowed = ['p', 'br', 'div', 'span', 'b', 'strong', 'i', 'em', 'u', 'img'];
+    const walk = node => {
+      [...node.childNodes].forEach(child => {
+        if (child.nodeType !== 1) return;
+        walk(child); // 先递归清理子节点
+        const tag = child.tagName.toLowerCase();
+        if (!allowed.includes(tag)) { child.replaceWith(...child.childNodes); return; }
+        [...child.attributes].forEach(attr => {
+          const n = attr.name.toLowerCase();
+          if (n.startsWith('on')) child.removeAttribute(attr.name);
+          else if (n === 'src') { if (!/^data:image\//i.test(attr.value)) child.removeAttribute(attr.name); }
+          else if (n !== 'alt' && n !== 'style' && n !== 'class') child.removeAttribute(attr.name);
+        });
+      });
+    };
+    walk(tpl.content);
+    return tpl.innerHTML;
+  }
+
+  function compressImage(file, maxW = 1080, quality = 0.82) {
+    return new Promise((res, rej) => {
+      const fr = new FileReader();
+      fr.onerror = rej;
+      fr.onload = () => {
+        const img = new Image();
+        img.onerror = rej;
+        img.onload = () => {
+          let { width: w, height: h } = img;
+          if (w > maxW) { h = Math.round(h * maxW / w); w = maxW; }
+          const c = document.createElement('canvas');
+          c.width = w; c.height = h;
+          c.getContext('2d').drawImage(img, 0, 0, w, h);
+          res(c.toDataURL('image/jpeg', quality));
+        };
+        img.src = fr.result;
+      };
+      fr.readAsDataURL(file);
+    });
+  }
+
+  function insertImageAtCursor(dataUrl) {
+    const ed = $('#entry-editor'); if (!ed) return;
+    ed.focus();
+    const img = document.createElement('img');
+    img.src = dataUrl; img.alt = '';
+    const sel = window.getSelection();
+    if (sel.rangeCount && ed.contains(sel.anchorNode)) {
+      const r = sel.getRangeAt(0);
+      r.deleteContents();
+      r.insertNode(img);
+      r.setStartAfter(img); r.collapse(true);
+      sel.removeAllRanges(); sel.addRange(r);
+    } else {
+      ed.appendChild(img);
+    }
+    ed.appendChild(document.createElement('br'));
+  }
+
+  function openEntryEditor(nb, entryId) {
+    const entries = getEntries(nb, currentDate(nb));
+    const entry = entryId ? entries.find(x => x.id === entryId) : null;
+    const fontSize = (entry && entry.fontSize) || nb.defaultFontSize || 16;
+    const color = (entry && entry.color) || nb.defaultColor || '#5b554c';
+    view.editing = { notebookId: nb.id, date: currentDate(nb), entryId: entryId || null, fontSize, color };
+
+    const editorHtml = entry ? entry.html : '';
+    const titleVal = entry ? (entry.title || '') : '';
+    const isEdit = !!entryId;
+
+    openModal(`
+      <div class="modal-panel editor-modal" id="entry-editor-panel">
+        <div class="modal-title">${isEdit ? '编辑记录' : '写新记录'}</div>
+        <input type="text" id="entry-title" class="form-input editor-title" maxlength="40" placeholder="标题（可选）" value="${escapeHtml(titleVal)}">
+        <div class="editor-toolbar" id="editor-toolbar">
+          <button type="button" class="tool-btn" data-cmd="bold" onmousedown="event.preventDefault()"><b>B</b></button>
+          <button type="button" class="tool-btn" data-cmd="italic" onmousedown="event.preventDefault()"><i>I</i></button>
+          <button type="button" class="tool-btn" data-cmd="underline" onmousedown="event.preventDefault()"><u>U</u></button>
+          <span class="tool-sep"></span>
+          <select id="entry-font-size" class="tool-select">
+            <option value="14">小</option>
+            <option value="16">标准</option>
+            <option value="18">中</option>
+            <option value="20">大</option>
+            <option value="24">特大</option>
+          </select>
+          <span class="tool-sep"></span>
+          <div class="color-swatches">
+            ${NOTE_TEXT_COLORS.map(c => `<button type="button" class="color-swatch" data-color="${c}" style="background:${c}"></button>`).join('')}
+          </div>
+          <span class="tool-sep"></span>
+          <button type="button" class="tool-btn" data-action="insert-image" onmousedown="event.preventDefault()">🖼️</button>
+        </div>
+        <div id="entry-editor" class="editor-area" contenteditable="true" data-placeholder="写点什么…"></div>
+        <input type="file" id="editor-file" accept="image/*" hidden>
+        <button class="modal-close primary" data-action="save-editor">保存</button>
+        <button class="modal-close" data-action="close-modal">取消</button>
+      </div>
+    `);
+
+    const ed = $('#entry-editor');
+    ed.innerHTML = editorHtml;
+    ed.style.fontSize = fontSize + 'px';
+    ed.style.color = color;
+    $('#entry-font-size').value = String(fontSize);
+    const sw = modalRoot.querySelector(`.color-swatch[data-color="${color}"]`);
+    if (sw) sw.classList.add('selected');
+
+    modalRoot.querySelector('#editor-toolbar').addEventListener('click', e => {
+      const b = e.target.closest('[data-cmd], [data-action]'); if (!b) return;
+      if (b.dataset.cmd) { ed.focus(); document.execCommand(b.dataset.cmd, false, null); }
+      else if (b.dataset.action === 'insert-image') { $('#editor-file').click(); }
+    });
+    modalRoot.querySelectorAll('.color-swatch').forEach(sw => {
+      sw.addEventListener('click', () => {
+        view.editing.color = sw.dataset.color;
+        ed.style.color = sw.dataset.color;
+        modalRoot.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('selected'));
+        sw.classList.add('selected');
+      });
+    });
+    $('#entry-font-size').addEventListener('change', e => {
+      view.editing.fontSize = +e.target.value;
+      ed.style.fontSize = e.target.value + 'px';
+    });
+    $('#editor-file').addEventListener('change', async ev => {
+      const file = ev.target.files[0]; if (!file) return;
+      try { insertImageAtCursor(await compressImage(file)); }
+      catch (_) { showToast('图片插入失败'); }
+      ev.target.value = '';
+    });
+  }
+
+  function saveEntryEditor() {
+    const nb = getNotebook(view.editing.notebookId); if (!nb) return;
+    const ed = $('#entry-editor');
+    const html = sanitizeHtml(ed.innerHTML);
+    const title = ($('#entry-title').value || '').trim();
+    const plain = html.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim();
+    if (!title && !plain) { showToast('写点什么吧'); return; }
+    const arr = getEntries(nb, view.editing.date);
+    if (view.editing.entryId) {
+      const e = arr.find(x => x.id === view.editing.entryId);
+      if (e) {
+        e.html = html; e.title = title;
+        e.fontSize = view.editing.fontSize; e.color = view.editing.color;
+        e.updatedAt = Date.now();
+      }
+    } else {
+      arr.push({
+        id: generateId(), html, title,
+        createdAt: Date.now(), updatedAt: Date.now(),
+        fontSize: view.editing.fontSize, color: view.editing.color
+      });
+    }
+    setEntries(nb, view.editing.date, arr);
+    closeModal();
+    render();
+    showToast('已保存');
+  }
+
+  function openEntryReader(nb, entryId) {
+    const e = getEntries(nb, currentDate(nb)).find(x => x.id === entryId);
+    if (!e) return;
+    openModal(`
+      <div class="modal-panel reader-modal">
+        <div class="reader-meta">${friendlyDate(currentDate(nb))} · ${friendlyTime(e.createdAt)}</div>
+        <h2 class="reader-title">${escapeHtml(e.title || '无标题')}</h2>
+        <div class="reader-body" style="font-size:${e.fontSize || 16}px;color:${e.color || '#5b554c'}">
+          ${sanitizeHtml(e.html || '')}
+        </div>
+        <button class="modal-close primary" data-action="close-modal">关闭</button>
+      </div>
+    `);
+  }
+
+  // ===== 删除自建本子 =====
+  function confirmDeleteNotebook(id) {
+    const nb = getNotebook(id);
+    if (!nb || nb.fixed) return;
+    const entryCount = Object.values(nb.entries).reduce((s, a) => s + a.length, 0);
+    openModal(`
+      <div class="modal-panel">
+        <div class="reminder-toast">
+          <div class="emoji">🗑️</div>
+          <h3>删除「${escapeHtml(nb.title)}」？</h3>
+          <p>将一并删除本子内 ${entryCount} 条记录，且无法恢复。</p>
+        </div>
+        <button class="modal-close primary danger" data-action="confirm-delete-notebook" data-id="${id}">删除本子</button>
+        <button class="modal-close" data-action="close-modal">取消</button>
+      </div>
+    `);
+  }
+
+  function deleteNotebook(id) {
+    const nb = getNotebook(id);
+    if (!nb || nb.fixed) return;
+    state.notebooks = state.notebooks.filter(n => n.id !== id);
+    saveState();
+    closeModal();
+    if (view.notebookId === id) view.notebookId = null;
+    render();
+    showToast('本子已删除');
+  }
+
   // ===== 条目操作 =====
   function addEntry() {
     const nb = getNotebook(view.notebookId);
     if (!nb) return;
     const input = $('#entry-input');
+    if (!input) return;
     const text = input.value.trim();
     if (!text) return;
     const date = currentDate(nb);
@@ -721,8 +1038,16 @@
     if (!t) return;
     const a = t.dataset.action;
 
-    if (a === 'open-notebook') openNotebook(t.dataset.id);
+    if (a === 'open-notebook') {
+      if (suppressOpen) { suppressOpen = false; return; }
+      openNotebook(t.dataset.id);
+    }
     else if (a === 'back') { view.notebookId = null; render(); }
+    else if (a === 'write-new') { const nb = getNotebook(view.notebookId); if (nb) openEntryEditor(nb, null); }
+    else if (a === 'edit-entry') { const nb = getNotebook(view.notebookId); if (nb) openEntryEditor(nb, t.dataset.id); }
+    else if (a === 'read-entry') { const nb = getNotebook(view.notebookId); if (nb) openEntryReader(nb, t.dataset.id); }
+    else if (a === 'save-editor') saveEntryEditor();
+    else if (a === 'confirm-delete-notebook') deleteNotebook(t.dataset.id);
     else if (a === 'open-calendar') openCalendar();
     else if (a === 'prev-date') shiftDate(-1);
     else if (a === 'next-date') shiftDate(1);
@@ -762,6 +1087,44 @@
     }
     if (e.key === 'Escape') closeModal();
   });
+
+  // ===== 长按删除自建本子（Pointer 事件统一鼠标/触摸）=====
+  let pressTimer = null;
+  let pressTarget = null;
+  let suppressOpen = false;
+  const LONG_PRESS_MS = 600;
+  const pressStart = { x: 0, y: 0 };
+
+  function onCardPressStart(e) {
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
+    const card = e.target.closest('.nb-card');
+    if (!card || card.dataset.fixed === 'true') return;
+    pressTarget = card;
+    pressStart.x = e.clientX; pressStart.y = e.clientY;
+    card.classList.add('pressing');
+    pressTimer = setTimeout(() => {
+      suppressOpen = true;
+      if (pressTarget) pressTarget.classList.remove('pressing');
+      card.classList.add('pressing-done');
+      confirmDeleteNotebook(card.dataset.id);
+      pressTimer = null; pressTarget = null;
+    }, LONG_PRESS_MS);
+  }
+
+  function onCardPressMove(e) {
+    if (!pressTimer || !pressTarget) return;
+    if (Math.abs(e.clientX - pressStart.x) > 10 || Math.abs(e.clientY - pressStart.y) > 10) onCardPressEnd();
+  }
+
+  function onCardPressEnd() {
+    if (pressTimer) { clearTimeout(pressTimer); pressTimer = null; }
+    if (pressTarget) { pressTarget.classList.remove('pressing'); pressTarget = null; }
+  }
+
+  document.addEventListener('pointerdown', onCardPressStart);
+  document.addEventListener('pointermove', onCardPressMove);
+  document.addEventListener('pointerup', onCardPressEnd);
+  document.addEventListener('pointercancel', onCardPressEnd);
 
   // ===== Service Worker =====
   if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
