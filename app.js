@@ -671,18 +671,28 @@
   }
 
   // ===== 提醒设置 =====
+  function triggersSupported() {
+    try { return typeof Notification !== 'undefined' && 'showTrigger' in Notification.prototype; }
+    catch (_) { return false; }
+  }
+
   function openRemindersModal() {
     const pushOn = localStorage.getItem(PUSH_ON_KEY) === '1';
-    const pushBlock = PUSH_CONFIGURED ? `
+    const canTrigger = triggersSupported();
+    const showToggle = canTrigger || PUSH_CONFIGURED;
+    const subText = canTrigger
+      ? '无需服务器，到点由浏览器准时弹窗（安卓 Chrome / Edge 支持）'
+      : '配合推送服务，到点弹窗';
+    const pushBlock = showToggle ? `
       <div class="push-toggle-row">
         <div class="push-toggle-text">
           <div class="push-toggle-title">后台提醒</div>
-          <div class="push-toggle-sub">开启后，即使没打开日记本也会弹窗（需配合推送服务）</div>
+          <div class="push-toggle-sub">${subText}</div>
         </div>
         <button class="switch ${pushOn ? 'on' : ''}" data-action="toggle-push" role="switch" aria-checked="${pushOn}"><span class="knob"></span></button>
       </div>
     ` : `
-      <p class="success-tip">到设置的时间、且日记本处于打开状态时，会温柔提醒你（纯前端无后台服务器，APP 完全关闭时无法自动弹窗）</p>
+      <p class="success-tip">到设置的时间、且日记本处于打开状态时，会温柔提醒你（此浏览器不支持后台定时弹窗）</p>
     `;
     openModal(`
       <div class="modal-panel">
@@ -707,7 +717,10 @@
     nb.reminder = value || null;
     saveState();
     showToast(`${nb.title} 提醒已${value ? '设为 ' + value : '关闭'}`);
-    pushRemindersUpdate();
+    if (localStorage.getItem(PUSH_ON_KEY) === '1') {
+      pushRemindersUpdate();
+      scheduleRemindersViaTrigger();
+    }
   }
 
   // ===== 后台推送（Web Push）=====
@@ -790,6 +803,51 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ deviceId: getDeviceId(), reminders })
       });
+    } catch (_) {}
+  }
+
+  // ===== 后台提醒（Notification Triggers，无需任何服务器）=====
+  // 让浏览器在指定时间戳弹通知，即使 APP / Service Worker 都没在跑也由系统调度。
+  // 支持 Chromium 系（安卓 Chrome / Edge）；iOS Safari 不支持，需走后端 Web Push。
+  async function scheduleRemindersViaTrigger() {
+    if (!triggersSupported()) return false;
+    if (Notification.permission !== 'granted') return false;
+    try {
+      const reg = await navigator.serviceWorker.ready;
+      const now = Date.now();
+      for (const nb of state.notebooks) {
+        if (!nb.reminder) continue;
+        const [h, m] = nb.reminder.split(':').map(Number);
+        const t = new Date(); t.setHours(h, m, 0, 0);
+        if (t.getTime() <= now) t.setDate(t.getDate() + 1); // 取下一次出现
+        const tag = 'reminder-' + nb.id;
+        const existing = await reg.getNotifications({ tag });
+        existing.forEach(n => n.close()); // 先取消旧的定时，避免重复
+        await reg.showNotification('日记本', {
+          body: `该写${nb.title}啦 ~`,
+          tag,
+          showTrigger: { timestamp: t.getTime() },
+          data: { url: '/' }
+        });
+      }
+      return true;
+    } catch (e) { return false; }
+  }
+
+  async function cancelScheduledReminders() {
+    try {
+      const reg = await navigator.serviceWorker.ready;
+      const all = await reg.getNotifications();
+      all.forEach(n => { if ((n.tag || '').indexOf('reminder-') === 0) n.close(); });
+    } catch (_) {}
+    try { await unsubscribeFromPush(); } catch (_) {}
+  }
+
+  async function cancelOneReminder(nbId) {
+    try {
+      const reg = await navigator.serviceWorker.ready;
+      const existing = await reg.getNotifications({ tag: 'reminder-' + nbId });
+      existing.forEach(n => n.close());
     } catch (_) {}
   }
 
@@ -1019,6 +1077,7 @@
   function deleteNotebook(id) {
     const nb = getNotebook(id);
     if (!nb || nb.fixed) return;
+    cancelOneReminder(id); // 取消该本已定的后台提醒
     state.notebooks = state.notebooks.filter(n => n.id !== id);
     saveState();
     closeModal();
@@ -1199,10 +1258,17 @@
       (async () => {
         if (on) {
           localStorage.removeItem(PUSH_ON_KEY);
-          await unsubscribeFromPush();
+          await cancelScheduledReminders();
+          showToast('已关闭后台提醒');
         } else {
-          const ok = await subscribeToPush();
-          if (ok) localStorage.setItem(PUSH_ON_KEY, '1');
+          let permission = Notification.permission;
+          if (permission === 'default') permission = await Notification.requestPermission();
+          if (permission !== 'granted') { showToast('未授权通知权限'); openRemindersModal(); return; }
+          let done = false;
+          if (triggersSupported()) done = await scheduleRemindersViaTrigger(); // 优先：免服务器
+          if (PUSH_CONFIGURED) { const ok = await subscribeToPush(); done = done || ok; }
+          if (done) { localStorage.setItem(PUSH_ON_KEY, '1'); showToast('已开启后台提醒 ✓'); }
+          else { showToast('当前环境不支持后台提醒'); }
         }
         openRemindersModal(); // 刷新开关状态
       })();
@@ -1282,4 +1348,8 @@
   // ===== 初始化 =====
   render();
   setTimeout(checkReminders, 1000);
+  // 若曾开启后台提醒，启动时为今天重新排定（Notification Triggers 每日需重排）
+  if (localStorage.getItem(PUSH_ON_KEY) === '1') {
+    setTimeout(() => { scheduleRemindersViaTrigger(); pushRemindersUpdate(); }, 1200);
+  }
 })();
