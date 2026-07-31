@@ -295,7 +295,7 @@
     return `
       <div class="entry-item ${cls}">
         <div class="entry-main">
-          <div class="entry-text">${escapeHtml(e.text)}</div>
+          <div class="entry-text">${escapeHtml(entryText(e)) || '（无内容）'}</div>
           <div class="entry-actions">${actions}</div>
         </div>
         ${noteHtml}
@@ -332,11 +332,13 @@
   }
 
   function successItem(e) {
+    const text = entryText(e);
     return `
       <div class="entry-item">
         <div class="entry-main">
-          <div class="entry-text">${escapeHtml(e.text)}</div>
+          <div class="entry-text">${escapeHtml(text) || '（无内容）'}</div>
           <div class="entry-actions">
+            ${text ? `<button class="action-btn" data-action="read-entry" data-id="${e.id}" title="查看">📖</button>` : ''}
             <button class="action-btn btn-delete" data-action="delete-entry" data-id="${e.id}" title="删除">×</button>
           </div>
         </div>
@@ -603,6 +605,14 @@
     return (text.split('\n')[0] || '').trim();
   }
 
+  // 兼容两种存储结构：旧版用 text 纯文本，迁移后/编辑器用 html 富文本。
+  // 统一取出可读正文，避免某字段缺失时显示 "undefined"。
+  function entryText(e) {
+    if (e.text != null && String(e.text).trim() !== '') return String(e.text);
+    if (e.html) return plainPreview(e.html, 400);
+    return '';
+  }
+
   function plainPreview(html, len) {
     let s = String(html)
       .replace(/<br\s*\/?>/gi, '\n')
@@ -790,18 +800,20 @@
   function openEntryReader(nb, entryId) {
     const e = getEntries(nb, currentDate(nb)).find(x => x.id === entryId);
     if (!e) return;
+    const bodyHtml = e.html ? sanitizeHtml(e.html) : escapeHtml(entryText(e));
+    const title = escapeHtml(e.title || firstLine(e.html || '') || entryText(e) || '无标题');
     openModal(`
       <div class="modal-panel reader-fullscreen">
         <div class="reader-header">
           <button type="button" class="reader-header-btn" data-action="close-modal">关闭</button>
           <div class="reader-header-title">阅读</div>
-          <button type="button" class="reader-header-btn primary" data-action="edit-entry" data-id="${e.id}">编辑</button>
+          ${nb.kind === 'custom' ? `<button type="button" class="reader-header-btn primary" data-action="edit-entry" data-id="${e.id}">编辑</button>` : ''}
         </div>
         <div class="reader-scroll">
           <div class="reader-meta">${friendlyDate(currentDate(nb))} · ${friendlyTime(e.createdAt)}</div>
-          <h2 class="reader-title">${escapeHtml(e.title || '无标题')}</h2>
+          <h2 class="reader-title">${title}</h2>
           <div class="reader-body" style="font-size:${e.fontSize || 16}px;color:${e.color || '#5b554c'}">
-            ${sanitizeHtml(e.html || '')}
+            ${bodyHtml}
           </div>
         </div>
       </div>
