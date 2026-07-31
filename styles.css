@@ -942,43 +942,36 @@ body {
 
 .fab-write:active { transform: scale(0.98); opacity: 0.92; }
 
-/* 自定义本：屏幕底部固定的“写新记录”栏 */
-.custom-add-bar {
+/* 自定义本：底部固定的“写新记录”框（沿用 2.8 虚线卡片样式，仅改固定定位） */
+.custom-new-box {
   position: fixed;
-  left: 0; right: 0; bottom: 0;
-  z-index: 50;
-  display: flex;
-  justify-content: center;
-  padding: 10px 16px calc(10px + env(safe-area-inset-bottom));
-  background: linear-gradient(to top, var(--paper) 56%, rgba(245, 240, 231, 0));
-  pointer-events: none; /* 仅让内部按钮可点，渐变区不拦截滚动 */
-}
-
-.custom-add-bar .custom-add-inner {
-  pointer-events: auto;
-  width: 100%;
+  left: 50%;
+  bottom: calc(14px + env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  width: calc(100% - 32px);
   max-width: 480px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  padding: 14px 18px;
-  border-radius: 20px;
-  background: var(--nb-color, #cfe0ea);
-  color: var(--nb-text, #3a3a3a);
-  box-shadow: var(--shadow);
+  z-index: 50;
+  padding: 16px;
+  border: 1.5px dashed var(--paper-dark);
+  border-radius: var(--radius-sm);
+  background: var(--white);
+  color: var(--ink-muted);
   cursor: pointer;
-  font-size: 15px;
-  font-weight: 500;
+  text-align: center;
   transition: var(--transition);
+  box-shadow: var(--shadow-soft);
 }
 
-.custom-add-bar .custom-add-inner:active {
-  transform: scale(0.97);
-  filter: brightness(0.97);
+.custom-new-box:active {
+  transform: translateX(-50%) scale(0.98);
+  border-color: var(--nb-color, var(--ink-muted));
+  background: var(--paper-soft);
 }
 
-.custom-add-emoji { font-size: 17px; }
+.custom-new-placeholder {
+  font-size: 14px;
+  font-weight: 400;
+}
 
 /* 有固定底栏时，内容区底部留白，避免最后一条记录被遮挡 */
 .notebook-view.has-addbar { padding-bottom: 96px; }

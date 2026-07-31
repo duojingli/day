@@ -245,10 +245,10 @@
         <button class="icon-btn" data-action="next-date" aria-label="下一天">›</button>
       </div>` : '';
 
-    // 自定义本：屏幕底部固定的“写新记录”栏
+    // 自定义本：屏幕底部固定的“写新记录”框（沿用 2.8 虚线卡片样式，仅改固定定位）
     const addBarHtml = isCustom ? `
-      <div class="custom-add-bar" data-action="write-new">
-        <div class="custom-add-inner"><span class="custom-add-emoji">✍️</span><span>写新记录…</span></div>
+      <div class="custom-new-box" data-action="write-new">
+        <span class="custom-new-placeholder">${entries.length ? '继续写点什么…' : '写新记录…'}</span>
       </div>` : '';
 
     return `
