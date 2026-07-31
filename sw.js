@@ -1,4 +1,4 @@
-const CACHE_NAME = 'xiaorizi-v3';
+const CACHE_NAME = 'xiaorizi-v4';
 const ASSETS = [
   './',
   './index.html',

@@ -3,6 +3,8 @@
   'use strict';
 
   const STORE_KEY = 'xiaorizi_state_v1';
+  // 单页模式（不要日历卡）自定义本：所有记录统一存放在这一个键下，不按日期拆分
+  const SINGLE = '__single__';
   const root = document.getElementById('app');
   const modalRoot = document.getElementById('modal');
   const toastRoot = document.getElementById('toast');
@@ -109,6 +111,13 @@
       state.notebooks.forEach(nb => {
         if (nb.defaultFontSize === undefined) nb.defaultFontSize = 16;
         if (nb.defaultColor === undefined) nb.defaultColor = '#5b554c';
+        // 旧版自定义本没有 calendar 字段：默认“单页模式”，并把按日期散落的记录合并到单页键
+        if (nb.kind === 'custom' && nb.calendar === undefined) {
+          nb.calendar = false;
+          const all = [];
+          Object.keys(nb.entries || {}).forEach(d => { (nb.entries[d] || []).forEach(e => all.push(e)); });
+          nb.entries = all.length ? { [SINGLE]: all } : {};
+        }
         Object.keys(nb.entries || {}).forEach(date => {
           nb.entries[date] = (nb.entries[date] || []).map(e => {
             if (e.html !== undefined || e.status !== undefined || e.text === undefined) return e;
@@ -136,7 +145,17 @@
     if (!view.dates[nb.id]) view.dates[nb.id] = nb.kind === 'tomorrow' ? tomorrowStr() : todayStr();
     return view.dates[nb.id];
   }
+  // 记录的存储键：自定义本若不要日历卡，则统一存在单页键下；其余按当前日期
+  function pageKey(nb) {
+    if (nb.kind === 'custom' && !nb.calendar) return SINGLE;
+    return currentDate(nb);
+  }
   function getEntries(nb, date) { return nb.entries[date] || []; }
+  // 自定义本当前应展示的记录：单页模式取单页键全部；日历模式取当日
+  function displayEntries(nb) {
+    if (nb.kind === 'custom' && !nb.calendar) return nb.entries[SINGLE] || [];
+    return getEntries(nb, currentDate(nb));
+  }
   function setEntries(nb, date, arr) {
     if (arr.length) nb.entries[date] = arr;
     else delete nb.entries[date];
@@ -163,9 +182,14 @@
   }
 
   function countToday(nb) {
-    const arr = getEntries(nb, todayStr());
-    if (nb.kind === 'tomorrow') return `${arr.filter(e => e.status === 'done').length}/${arr.length} 完成`;
-    return `${arr.length} 条记录`;
+    if (nb.kind === 'tomorrow') {
+      const arr = getEntries(nb, todayStr());
+      return `${arr.filter(e => e.status === 'done').length}/${arr.length} 完成`;
+    }
+    if (nb.kind === 'custom' && !nb.calendar) {
+      return `${(nb.entries[SINGLE] || []).length} 条记录`;
+    }
+    return `${getEntries(nb, todayStr()).length} 条记录`;
   }
 
   function homeView() {
@@ -200,30 +224,42 @@
   // ===== 笔记本内页 =====
   function notebookView(nb) {
     const date = currentDate(nb);
-    const entries = getEntries(nb, date);
+    const entries = displayEntries(nb);
     const title = escapeHtml(nb.title);
     const isCustom = nb.kind === 'custom';
+    const hasCalendar = isCustom && nb.calendar;       // 自定义本且启用日历卡
+    const showDateBar = !isCustom || hasCalendar;       // 明日/成功 或 自定义+日历 才显示日期栏
 
     let body = '';
     if (nb.kind === 'tomorrow') body = tomorrowBody(nb, date, entries);
     else if (nb.kind === 'success') body = successBody(nb, date, entries);
     else body = customBody(nb, date, entries);
 
+    const dateBarHtml = showDateBar ? `
+      <div class="date-bar ${hasCalendar ? 'date-bar-plain' : ''}">
+        <button class="icon-btn" data-action="prev-date" aria-label="上一天">‹</button>
+        <div class="date-pill" data-action="open-calendar">
+          <div class="date-main">${friendlyDate(date)} · ${weekday(date)}</div>
+          ${hasCalendar ? '' : `<div class="date-sub">${date} · 点击查看日历</div>`}
+        </div>
+        <button class="icon-btn" data-action="next-date" aria-label="下一天">›</button>
+      </div>` : '';
+
+    // 自定义本：屏幕底部固定的“写新记录”栏
+    const addBarHtml = isCustom ? `
+      <div class="custom-add-bar" data-action="write-new">
+        <div class="custom-add-inner"><span class="custom-add-emoji">✍️</span><span>写新记录…</span></div>
+      </div>` : '';
+
     return `
-      <div class="notebook-view" style="--nb-color:${nb.color};--nb-text:${contrastText(nb.color)}">
+      <div class="notebook-view ${isCustom ? 'has-addbar' : ''}" style="--nb-color:${nb.color};--nb-text:${contrastText(nb.color)}">
         <div class="top-bar">
           <button class="back-btn" data-action="back" aria-label="返回">←</button>
           <div class="top-title">${title}</div>
         </div>
-        <div class="date-bar ${isCustom ? 'date-bar-plain' : ''}">
-          ${isCustom ? '' : `<button class="icon-btn" data-action="prev-date" aria-label="上一天">‹</button>`}
-          <div class="date-pill" data-action="open-calendar">
-            <div class="date-main">${friendlyDate(date)} · ${weekday(date)}</div>
-            ${isCustom ? '' : `<div class="date-sub">${date} · 点击查看日历</div>`}
-          </div>
-          ${isCustom ? '' : `<button class="icon-btn" data-action="next-date" aria-label="下一天">›</button>`}
-        </div>
+        ${dateBarHtml}
         ${body}
+        ${addBarHtml}
       </div>
     `;
   }
@@ -348,13 +384,10 @@
 
   // 自定义本子
   function customBody(nb, date, entries) {
-    const list = entries.length ? entries.map(e => customCard(e)).join('') : '';
+    const list = entries.length ? entries.map(e => customCard(e)).join('') : emptyState(nb);
     return `
       <div class="panel panel-custom">
         <div class="entry-list">${list}</div>
-        <div class="custom-new-box" data-action="write-new">
-          <span class="custom-new-placeholder">${entries.length ? '继续写点什么…' : '写新记录…'}</span>
-        </div>
       </div>
     `;
   }
@@ -524,6 +557,7 @@
   function openAddNotebookModal() {
     let selectedColor = COLOR_OPTIONS[2].color;
     let selectedIcon = ICONS[0];
+    let selectedCalendar = false; // 默认单页模式（不按日期）
 
     function colorSwatches() {
       return COLOR_OPTIONS.map(c => `
@@ -541,9 +575,21 @@
       `).join('');
     }
 
+    function calendarChoice() {
+      const opt = (on, label) => `
+        <button class="choice-opt ${selectedCalendar === on ? 'selected' : ''}"
+                data-action="select-calendar" data-cal="${on ? '1' : '0'}">${label}</button>`;
+      return `
+        <div class="choice-row">
+          ${opt(false, '📝 单页（一直一个本，不按日期）')}
+          ${opt(true, '📅 按日期（每天一页 + 日历标记）')}
+        </div>`;
+    }
+
     function refresh() {
       $('#nb-color-list').innerHTML = colorSwatches();
       $('#nb-icon-list').innerHTML = iconSwatches();
+      const cc = $('#nb-cal-choice'); if (cc) cc.innerHTML = calendarChoice();
     }
 
     openModal(`
@@ -552,6 +598,10 @@
         <div class="form-group">
           <label class="form-label">本子名称</label>
           <input type="text" id="nb-title-input" class="form-input" maxlength="12" placeholder="例如：学习本、情绪本…">
+        </div>
+        <div class="form-group">
+          <label class="form-label">记录方式</label>
+          <div id="nb-cal-choice">${calendarChoice()}</div>
         </div>
         <div class="form-group">
           <label class="form-label">图标</label>
@@ -576,27 +626,30 @@
       } else if (t.dataset.action === 'select-icon') {
         selectedIcon = t.dataset.icon;
         refresh();
+      } else if (t.dataset.action === 'select-calendar') {
+        selectedCalendar = t.dataset.cal === '1';
+        refresh();
       } else if (t.dataset.action === 'create-notebook') {
-        createNotebook(selectedColor, selectedIcon);
+        createNotebook(selectedColor, selectedIcon, selectedCalendar);
       }
     });
   }
 
-  function createNotebook(color, icon) {
+  function createNotebook(color, icon, calendar) {
     const input = $('#nb-title-input');
     const title = input.value.trim();
     if (!title) { showToast('给本子起个名字吧'); return; }
     const nb = {
       id: 'nb_' + generateId(), kind: 'custom', title,
       emoji: icon, color,
-      fixed: false, entries: {},
+      fixed: false, calendar: !!calendar, entries: {},
       defaultFontSize: 16, defaultColor: '#5fa97f'
     };
     state.notebooks.push(nb);
     saveState();
     closeModal();
     openNotebook(nb.id);
-    showToast('本子已创建');
+    showToast(calendar ? '本子已创建（按日期）' : '本子已创建');
   }
 
   // ===== 富文本 / 自定义本辅助 =====
@@ -694,11 +747,11 @@
   }
 
   function openEntryEditor(nb, entryId) {
-    const entries = getEntries(nb, currentDate(nb));
+    const entries = getEntries(nb, pageKey(nb));
     const entry = entryId ? entries.find(x => x.id === entryId) : null;
     const fontSize = (entry && entry.fontSize) || nb.defaultFontSize || 16;
     const color = (entry && entry.color) || nb.defaultColor || '#5b554c';
-    view.editing = { notebookId: nb.id, date: currentDate(nb), entryId: entryId || null, fontSize, color };
+    view.editing = { notebookId: nb.id, date: pageKey(nb), entryId: entryId || null, fontSize, color };
 
     const editorHtml = entry ? entry.html : '';
     const titleVal = entry ? (entry.title || '') : '';
@@ -798,7 +851,7 @@
   }
 
   function openEntryReader(nb, entryId) {
-    const e = getEntries(nb, currentDate(nb)).find(x => x.id === entryId);
+    const e = getEntries(nb, pageKey(nb)).find(x => x.id === entryId);
     if (!e) return;
     const bodyHtml = e.html ? sanitizeHtml(e.html) : escapeHtml(entryText(e));
     const title = escapeHtml(e.title || firstLine(e.html || '') || entryText(e) || '无标题');
@@ -857,7 +910,7 @@
     if (!input) return;
     const text = input.value.trim();
     if (!text) return;
-    const date = currentDate(nb);
+    const date = pageKey(nb);
     const arr = getEntries(nb, date);
     let item;
     if (nb.kind === 'tomorrow') {
