@@ -1,4 +1,4 @@
-const CACHE_NAME = 'xiaorizi-v2';
+const CACHE_NAME = 'xiaorizi-v3';
 const ASSETS = [
   './',
   './index.html',
@@ -28,46 +28,17 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
+// 网络优先：先尝试从服务器拉取最新文件（部署后刷新即可生效），
+// 仅在断网时回退到缓存，保证离线可用。
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
   event.respondWith(
-    caches.match(event.request).then((cached) =>
-      cached || fetch(event.request).then((response) => {
+    fetch(event.request)
+      .then((response) => {
         const clone = response.clone();
-        caches.open(CACHE_NAME).then((cache) => {
-          cache.put(event.request, clone);
-        });
+        caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
         return response;
       })
-    )
-  );
-});
-
-// ===== 后台推送：即使 APP 关闭也能弹窗 =====
-self.addEventListener('push', (event) => {
-  let data = { title: '日记本', body: '该写日记啦 ~', url: '/' };
-  try { if (event.data) data = Object.assign(data, event.data.json()); } catch (_) {}
-  event.waitUntil(
-    self.registration.showNotification(data.title || '日记本', {
-      body: data.body || '',
-      icon: 'icons/icon-192.png',
-      badge: 'icons/icon-192.png',
-      data: { url: data.url || '/' },
-      tag: 'xiaorizi-reminder',
-      renotify: true
-    })
-  );
-});
-
-self.addEventListener('notificationclick', (event) => {
-  event.notification.close();
-  const target = (event.notification.data && event.notification.data.url) || '/';
-  event.waitUntil(
-    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clients) => {
-      for (const c of clients) {
-        if ('focus' in c) { c.focus(); if ('navigate' in c) c.navigate(target); return; }
-      }
-      if (self.clients.openWindow) return self.clients.openWindow(target);
-    })
+      .catch(() => caches.match(event.request))
   );
 });
