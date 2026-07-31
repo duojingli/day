@@ -808,63 +808,35 @@ body {
   outline: none;
 }
 
-/* 后台提醒开关 */
-.push-toggle-row {
+/* 提醒设置控件 */
+.reminder-controls {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 12px 14px;
-  margin-bottom: 14px;
-  background: var(--white);
-  border-radius: var(--radius-sm);
-  box-shadow: 0 2px 8px rgba(110, 100, 80, 0.05);
-}
-
-.push-toggle-title {
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--ink);
-}
-
-.push-toggle-sub {
-  font-size: 11px;
-  color: var(--ink-light);
-  margin-top: 2px;
-  line-height: 1.4;
-}
-
-.switch {
+  gap: 8px;
   flex-shrink: 0;
-  width: 50px;
-  height: 30px;
+}
+
+.cal-btn {
   border: none;
-  border-radius: 15px;
-  background: var(--paper-dark);
-  position: relative;
-  cursor: pointer;
-  transition: var(--transition);
-  padding: 0;
-}
-
-.switch.on {
+  border-radius: var(--radius-sm);
+  padding: 9px 15px;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  color: #fff;
   background: var(--success);
-}
-
-.switch .knob {
-  position: absolute;
-  top: 3px;
-  left: 3px;
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  background: #fff;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 2px 8px rgba(125, 165, 139, 0.28);
+  cursor: pointer;
+  white-space: nowrap;
   transition: var(--transition);
 }
 
-.switch.on .knob {
-  left: 23px;
+.cal-btn:active { transform: scale(0.96); }
+
+.cal-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  box-shadow: none;
 }
 
 /* ===== Toast ===== */
