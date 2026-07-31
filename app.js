@@ -21,16 +21,31 @@
 
   // 新建本子可选的图标（每个本子只用一个图标标识，不再使用纹理背景）
   const ICONS = [
-    '📓', '📔', '📒', '📝', '✏️', '📚', '🗒️', '📌',
-    '🌿', '🌸', '🌟', '💡', '🎯', '🌈', '🍀', '☕',
-    '🍵', '💭', '🎀', '🌻', '🪴', '✨', '🦋', '🌙',
-    '❤️', '🔥', '🌊', '🍎', '🐱', '🌼', '🧸', '💎'
+    '📓', '📔', '📒', '📝', '✏️', '📚', '🗒️', '📌', '📖', '🔖',
+    '🌿', '🌸', '🌟', '🌈', '🍀', '☕', '🍵', '🌻', '🌼', '🪴',
+    '✨', '🦋', '🌙', '🌊', '🍃', '🌳', '🌞', '❄️', '🔥', '💎',
+    '🐱', '🐰', '🐻', '🐼', '🐥', '🐢', '🦊', '🐧',
+    '🍎', '🍓', '🍊', '🍉', '🍇', '🍑', '🥝', '🍋',
+    '🧁', '🍰', '🍪', '🍩', '🍬', '🍫',
+    '🎯', '💭', '🎀', '❤️', '🧸', '💡', '⭐'
   ];
 
   // 富文本编辑器的文字颜色（与整体 Morandi 低饱和风格一致）
   const NOTE_TEXT_COLORS = [
     '#5b554c', '#8a8276', '#7a6f8e', '#9a7b6f',
     '#6f8a7a', '#b08a8a', '#5b6b8a', '#a88a5b'
+  ];
+
+  // 自定义本用的更鲜嫩的字体颜色（浅绿 / 浅蓝 / 浅粉等，不沉闷）
+  const CUSTOM_TEXT_COLORS = [
+    '#5fa97f', // 嫩绿
+    '#6fa8c4', // 浅蓝
+    '#c77f9b', // 浅粉
+    '#9a86c0', // 浅紫
+    '#cf9a5e', // 暖橙
+    '#7bbfa0', // 薄荷绿
+    '#5f9bc4', // 天蓝
+    '#c7ad5e'  // 奶油黄
   ];
 
   // ===== 工具函数 =====
@@ -354,7 +369,7 @@
         </div>
         <div class="note-card-preview">${escapeHtml(preview)}</div>
         <div class="note-card-actions">
-          <button class="note-act" data-action="read-entry" data-id="${e.id}" title="阅读">👁</button>
+          <button class="note-act" data-action="read-entry" data-id="${e.id}" title="阅读">📖</button>
           <button class="note-act" data-action="edit-entry" data-id="${e.id}" title="编辑">✎</button>
           <button class="note-act note-act-del" data-action="delete-entry" data-id="${e.id}" title="删除">🗑</button>
         </div>
@@ -573,7 +588,7 @@
       id: 'nb_' + generateId(), kind: 'custom', title,
       emoji: icon, color,
       fixed: false, entries: {},
-      defaultFontSize: 16, defaultColor: '#5b554c'
+      defaultFontSize: 16, defaultColor: '#5fa97f'
     };
     state.notebooks.push(nb);
     saveState();
@@ -701,7 +716,7 @@
           </select>
           <span class="tool-sep"></span>
           <div class="color-swatches">
-            ${NOTE_TEXT_COLORS.map(c => `<button type="button" class="color-swatch" data-color="${c}" style="background:${c}"></button>`).join('')}
+            ${(nb.kind === 'custom' ? CUSTOM_TEXT_COLORS : NOTE_TEXT_COLORS).map(c => `<button type="button" class="color-swatch" data-color="${c}" style="background:${c}"></button>`).join('')}
           </div>
           <span class="tool-sep"></span>
           <button type="button" class="tool-btn" data-action="insert-image" onmousedown="event.preventDefault()">🖼️</button>

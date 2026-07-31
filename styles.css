@@ -157,9 +157,9 @@ body {
 }
 
 .top-bar {
-  display: flex;
+  display: grid;
+  grid-template-columns: 40px 1fr 40px;
   align-items: center;
-  justify-content: space-between;
   margin-bottom: 16px;
   gap: 12px;
 }
@@ -187,7 +187,7 @@ body {
 }
 
 .top-title {
-  flex: 1;
+  grid-column: 2;
   text-align: center;
   font-size: 17px;
   font-weight: 500;
