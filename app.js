@@ -82,6 +82,14 @@
     '#6f8a7a', '#b08a8a', '#5b6b8a', '#a88a5b'
   ];
 
+  // ===== 后台推送（极简 Node 服务地址）=====
+  // 纯前端做不到「APP 关闭时也弹窗」，需要一个单独部署、带 HTTPS 的推送服务。
+  // 把这个占位地址换成你部署好的服务地址即可（前端会自动从它拉取 VAPID 公钥）。
+  const PUSH_SERVER_URL = 'https://YOUR-PUSH-SERVER.example.com';
+  const PUSH_CONFIGURED = typeof PUSH_SERVER_URL === 'string' && PUSH_SERVER_URL.indexOf('YOUR-PUSH-SERVER') === -1;
+  const PUSH_ON_KEY = 'xiaorizi_push_on';
+  const DEVICE_ID_KEY = 'xiaorizi_device_id';
+
   // ===== 工具函数 =====
   function $(sel, ctx = document) { return ctx.querySelector(sel); }
   function pad(n) { return n < 10 ? '0' + n : '' + n; }
@@ -664,10 +672,22 @@
 
   // ===== 提醒设置 =====
   function openRemindersModal() {
+    const pushOn = localStorage.getItem(PUSH_ON_KEY) === '1';
+    const pushBlock = PUSH_CONFIGURED ? `
+      <div class="push-toggle-row">
+        <div class="push-toggle-text">
+          <div class="push-toggle-title">后台提醒</div>
+          <div class="push-toggle-sub">开启后，即使没打开日记本也会弹窗（需配合推送服务）</div>
+        </div>
+        <button class="switch ${pushOn ? 'on' : ''}" data-action="toggle-push" role="switch" aria-checked="${pushOn}"><span class="knob"></span></button>
+      </div>
+    ` : `
+      <p class="success-tip">到设置的时间、且日记本处于打开状态时，会温柔提醒你（纯前端无后台服务器，APP 完全关闭时无法自动弹窗）</p>
+    `;
     openModal(`
       <div class="modal-panel">
         <div class="modal-title">每日提醒</div>
-        <p class="success-tip">到设置的时间、且日记本处于打开状态时，会温柔提醒你（纯前端无后台服务器，APP 完全关闭时无法自动弹窗）</p>
+        ${pushBlock}
         <div id="reminder-list">
           ${state.notebooks.map(nb => `
             <div class="reminder-row">
@@ -679,7 +699,6 @@
         <button class="modal-close primary" data-action="close-modal">完成</button>
       </div>
     `);
-    requestNotificationPermission();
   }
 
   function updateReminder(id, value) {
@@ -688,6 +707,90 @@
     nb.reminder = value || null;
     saveState();
     showToast(`${nb.title} 提醒已${value ? '设为 ' + value : '关闭'}`);
+    pushRemindersUpdate();
+  }
+
+  // ===== 后台推送（Web Push）=====
+  function getDeviceId() {
+    let id = localStorage.getItem(DEVICE_ID_KEY);
+    if (!id) {
+      id = 'dev_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+      localStorage.setItem(DEVICE_ID_KEY, id);
+    }
+    return id;
+  }
+
+  function urlBase64ToUint8Array(base64String) {
+    const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+    const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+    const raw = atob(base64);
+    const arr = new Uint8Array(raw.length);
+    for (let i = 0; i < raw.length; i++) arr[i] = raw.charCodeAt(i);
+    return arr;
+  }
+
+  async function getVapidPublicKey() {
+    const res = await fetch(PUSH_SERVER_URL + '/api/vapid-public-key');
+    const j = await res.json();
+    return j.publicKey;
+  }
+
+  async function subscribeToPush() {
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+      showToast('当前浏览器不支持后台推送');
+      return false;
+    }
+    let permission = Notification.permission;
+    if (permission === 'default') permission = await Notification.requestPermission();
+    if (permission !== 'granted') { showToast('未授权通知权限'); return false; }
+    try {
+      const reg = await navigator.serviceWorker.ready;
+      const publicKey = await getVapidPublicKey();
+      const sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(publicKey)
+      });
+      const reminders = state.notebooks
+        .filter(nb => nb.reminder)
+        .map(nb => ({ id: nb.id, title: nb.title, time: nb.reminder }));
+      const res = await fetch(PUSH_SERVER_URL + '/api/subscribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ deviceId: getDeviceId(), subscription: sub, reminders })
+      });
+      if (!res.ok) { showToast('订阅失败，请检查推送服务地址'); return false; }
+      showToast('已开启后台提醒 ✓');
+      return true;
+    } catch (e) {
+      showToast('订阅失败：' + (e && e.message ? e.message : e));
+      return false;
+    }
+  }
+
+  async function unsubscribeFromPush() {
+    try {
+      await fetch(PUSH_SERVER_URL + '/api/unsubscribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ deviceId: getDeviceId() })
+      });
+    } catch (_) {}
+    showToast('已关闭后台提醒');
+  }
+
+  async function pushRemindersUpdate() {
+    if (!PUSH_CONFIGURED) return;
+    if (localStorage.getItem(PUSH_ON_KEY) !== '1') return;
+    try {
+      const reminders = state.notebooks
+        .filter(nb => nb.reminder)
+        .map(nb => ({ id: nb.id, title: nb.title, time: nb.reminder }));
+      await fetch(PUSH_SERVER_URL + '/api/reminders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ deviceId: getDeviceId(), reminders })
+      });
+    } catch (_) {}
   }
 
   // ===== 富文本 / 自定义本辅助 =====
@@ -922,6 +1025,7 @@
     if (view.notebookId === id) view.notebookId = null;
     render();
     showToast('本子已删除');
+    pushRemindersUpdate(); // 同步后台：移除已删本的提醒
   }
 
   // ===== 条目操作 =====
@@ -1090,6 +1194,19 @@
     else if (a === 'open-add-notebook') openAddNotebookModal();
     else if (a === 'create-notebook') { /* 在 openAddNotebookModal 内联处理 */ }
     else if (a === 'open-reminders') openRemindersModal();
+    else if (a === 'toggle-push') {
+      const on = localStorage.getItem(PUSH_ON_KEY) === '1';
+      (async () => {
+        if (on) {
+          localStorage.removeItem(PUSH_ON_KEY);
+          await unsubscribeFromPush();
+        } else {
+          const ok = await subscribeToPush();
+          if (ok) localStorage.setItem(PUSH_ON_KEY, '1');
+        }
+        openRemindersModal(); // 刷新开关状态
+      })();
+    }
     else if (a === 'update-reminder') { /* handled by change */ }
     else if (a === 'add-entry') addEntry();
     else if (a === 'delete-entry') deleteEntry(t.dataset.id);
