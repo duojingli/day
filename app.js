@@ -7,7 +7,7 @@
   const modalRoot = document.getElementById('modal');
   const toastRoot = document.getElementById('toast');
 
-  // ===== 配置：配色 / 纹理 =====
+  // ===== 配置：配色 / 图标 =====
   const COLOR_OPTIONS = [
     { name: '雾蓝', color: '#cfe0ea' },
     { name: '雾粉', color: '#f2d7df' },
@@ -19,76 +19,19 @@
     { name: '燕麦', color: '#e6ded3' }
   ];
 
-  const PATTERNS = [
-    // —— 主功能本专用（自定义本不可选）——
-    { key: 'snow', glyph: '❄️', label: '雪花' },
-    { key: 'floral', glyph: '🌸', label: '碎花' },
-    // —— 原有通用 ——
-    { key: 'dots', glyph: '•', label: '圆点' },
-    { key: 'leaves', glyph: '🍃', label: '落叶' },
-    { key: 'stars', glyph: '✦', label: '星星' },
-    { key: 'hearts', glyph: '🤍', label: '爱心' },
-    { key: 'waves', glyph: '〜', label: '波浪' },
-    { key: 'none', glyph: '', label: '纯色' },
-    // —— 新增自定义本纹理 ——
-    { key: 'sun', glyph: '☀️', label: '太阳' },
-    { key: 'rainbow', glyph: '🌈', label: '彩虹' },
-    { key: 'star', glyph: '🌟', label: '亮星' },
-    { key: 'gift', glyph: '🎁', label: '礼物' },
-    { key: 'sparkles', glyph: '✨', label: '闪光' },
-    { key: 'party', glyph: '🎊', label: '彩球' },
-    { key: 'tada', glyph: '🎉', label: '礼花' },
-    { key: 'hearts2', glyph: '💖', label: '心心' },
-    { key: 'hearts3', glyph: '💗', label: '粉心' },
-    { key: 'strawberry', glyph: '🍓', label: '草莓' },
-    { key: 'apple', glyph: '🍎', label: '苹果' },
-    { key: 'orange', glyph: '🍊', label: '橘子' },
-    { key: 'watermelon', glyph: '🍉', label: '西瓜' },
-    { key: 'burger', glyph: '🍔', label: '汉堡' },
-    { key: 'icecream', glyph: '🍦', label: '冰淇淋' },
-    { key: 'cocktail', glyph: '🍸', label: '鸡尾酒' },
-    { key: 'greenapple', glyph: '🍏', label: '青苹果' },
-    { key: 'cherry', glyph: '🍒', label: '樱桃' },
-    { key: 'grapes', glyph: '🍇', label: '葡萄' },
-    { key: 'peach', glyph: '🍑', label: '桃子' },
-    { key: 'pineapple', glyph: '🍍', label: '菠萝' },
-    { key: 'milk', glyph: '🥛', label: '牛奶' },
-    { key: 'pretzel', glyph: '🥨', label: '椒盐卷' },
-    { key: 'coconut', glyph: '🥥', label: '椰子' },
-    { key: 'kiwi', glyph: '🥝', label: '猕猴桃' },
-    { key: 'clover', glyph: '🍀', label: '四叶草' },
-    { key: 'maple', glyph: '🍁', label: '枫叶' },
-    { key: 'blossom', glyph: '🌼', label: '小雏菊' },
-    { key: 'rosette', glyph: '🏵️', label: '玫瑰' },
-    { key: 'butterfly', glyph: '🦋', label: '蝴蝶' },
-    { key: 'peacock', glyph: '🦚', label: '孔雀' },
-    { key: 'swan', glyph: '🦢', label: '天鹅' },
-    { key: 'money', glyph: '🤑', label: '金币' },
-    { key: 'plane', glyph: '✈️', label: '飞机' },
-    { key: 'tea', glyph: '🍵', label: '茶' },
-    { key: 'bread', glyph: '🥖', label: '面包' },
-    { key: 'cupcake', glyph: '🧁', label: '杯子蛋糕' },
-    { key: 'pill', glyph: '💊', label: '药丸' },
-    { key: 'sprout', glyph: '🌱', label: '嫩芽' },
-    { key: 'paw', glyph: '🐾', label: '爪印' }
+  // 新建本子可选的图标（每个本子只用一个图标标识，不再使用纹理背景）
+  const ICONS = [
+    '📓', '📔', '📒', '📝', '✏️', '📚', '🗒️', '📌',
+    '🌿', '🌸', '🌟', '💡', '🎯', '🌈', '🍀', '☕',
+    '🍵', '💭', '🎀', '🌻', '🪴', '✨', '🦋', '🌙',
+    '❤️', '🔥', '🌊', '🍎', '🐱', '🌼', '🧸', '💎'
   ];
-
-  // 自定义本可用纹理（排除主功能本专用的 snow/floral）
-  const CUSTOM_PATTERNS = PATTERNS.filter(p => p.key !== 'snow' && p.key !== 'floral');
 
   // 富文本编辑器的文字颜色（与整体 Morandi 低饱和风格一致）
   const NOTE_TEXT_COLORS = [
     '#5b554c', '#8a8276', '#7a6f8e', '#9a7b6f',
     '#6f8a7a', '#b08a8a', '#5b6b8a', '#a88a5b'
   ];
-
-  // ===== 后台推送（极简 Node 服务地址）=====
-  // 纯前端做不到「APP 关闭时也弹窗」，需要一个单独部署、带 HTTPS 的推送服务。
-  // 把这个占位地址换成你部署好的服务地址即可（前端会自动从它拉取 VAPID 公钥）。
-  const PUSH_SERVER_URL = 'https://YOUR-PUSH-SERVER.example.com';
-  const PUSH_CONFIGURED = typeof PUSH_SERVER_URL === 'string' && PUSH_SERVER_URL.indexOf('YOUR-PUSH-SERVER') === -1;
-  const PUSH_ON_KEY = 'xiaorizi_push_on';
-  const DEVICE_ID_KEY = 'xiaorizi_device_id';
 
   // ===== 工具函数 =====
   function $(sel, ctx = document) { return ctx.querySelector(sel); }
@@ -115,45 +58,17 @@
     return yiq >= 160 ? '#4a443d' : '#fffdfa';
   }
 
-  const patternCache = new Map();
-
-  // 用 canvas 把 emoji 画成 PNG 纹理贴图，绕过 SVG background 中 emoji 经常无法
-  // 渲染成彩色/甚至不渲染的问题，保证手机端纹理可见且可区分。
-  function patternBackground(color, patternKey) {
-    const p = PATTERNS.find(x => x.key === patternKey) || PATTERNS[0];
-    if (!p.glyph) return color;
-    const key = `${color}|${p.glyph}`;
-    if (patternCache.has(key)) return patternCache.get(key);
-
-    const size = 80;
-    const c = document.createElement('canvas');
-    c.width = size; c.height = size;
-    const ctx = c.getContext('2d');
-    ctx.fillStyle = color;
-    ctx.fillRect(0, 0, size, size);
-
-    ctx.font = `${Math.round(size * 0.42)}px "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", "Android Emoji", emoji, sans-serif`;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.globalAlpha = 0.32;
-    ctx.fillText(p.glyph, size / 2, size / 2 + size * 0.04);
-
-    const url = `url(${c.toDataURL('image/png')})`;
-    patternCache.set(key, url);
-    return `${color} ${url}`;
-  }
-
   // ===== 状态 =====
   function defaultState() {
     return {
       notebooks: [
         {
           id: 'nb_tomorrow', kind: 'tomorrow', title: '明日计划本', emoji: '❄️',
-          color: '#cfe0ea', pattern: 'snow', fixed: true, reminder: '21:00', entries: {}
+          color: '#cfe0ea', fixed: true, entries: {}
         },
         {
           id: 'nb_success', kind: 'success', title: '成功日记本', emoji: '🌸',
-          color: '#f2d7df', pattern: 'floral', fixed: true, reminder: '21:30', entries: {}
+          color: '#f2d7df', fixed: true, entries: {}
         }
       ]
     };
@@ -199,8 +114,7 @@
   const state = loadState();
   migrateState();
   const view = { notebookId: null, dates: {}, modal: null, editing: null };
-  const firedReminders = new Set();
-  let suppressOpen = false; // 长按后抑制紧接着的误触“打开”点击
+  let suppressOpen = false; // 长按后抑制紧接着的误触"打开"点击
 
   function getNotebook(id) { return state.notebooks.find(n => n.id === id); }
   function currentDate(nb) {
@@ -242,11 +156,11 @@
   function homeView() {
     const cards = state.notebooks.map(nb => `
       <button class="nb-card" data-action="open-notebook" data-id="${nb.id}" data-fixed="${nb.fixed}"
-              style="background:${patternBackground(nb.color, nb.pattern)};--nb-color:${nb.color};--nb-text:${contrastText(nb.color)}">
+              style="background:${nb.color};--nb-color:${nb.color};--nb-text:${contrastText(nb.color)}">
         <div>
           <div class="nb-emoji">${nb.emoji}</div>
           <div class="nb-title">${escapeHtml(nb.title)}</div>
-          <div class="nb-meta">${countToday(nb)} · ${nb.reminder ? nb.reminder : '无提醒'}</div>
+          <div class="nb-meta">${countToday(nb)}</div>
         </div>
       </button>
     `).join('');
@@ -285,7 +199,6 @@
         <div class="top-bar">
           <button class="back-btn" data-action="back" aria-label="返回">←</button>
           <div class="top-title">${title}</div>
-          <button class="icon-btn" data-action="open-reminders" aria-label="提醒设置">⏰</button>
         </div>
         <div class="date-bar ${isCustom ? 'date-bar-plain' : ''}">
           ${isCustom ? '' : `<button class="icon-btn" data-action="prev-date" aria-label="上一天">‹</button>`}
@@ -493,7 +406,7 @@
       const bd = modalRoot.querySelector('.modal-backdrop');
       if (bd) {
         bd.classList.add('in');
-        if (bd.querySelector('.editor-fullscreen')) bd.classList.add('editor-backdrop');
+        if (bd.querySelector('.editor-fullscreen, .reader-fullscreen')) bd.classList.add('editor-backdrop');
       }
     });
   }
@@ -593,7 +506,7 @@
   // ===== 新建本子 =====
   function openAddNotebookModal() {
     let selectedColor = COLOR_OPTIONS[2].color;
-    let selectedPattern = 'sun';
+    let selectedIcon = ICONS[0];
 
     function colorSwatches() {
       return COLOR_OPTIONS.map(c => `
@@ -603,18 +516,17 @@
       `).join('');
     }
 
-    function patternSwatches() {
-      return CUSTOM_PATTERNS.map(p => `
-        <button class="pattern-option ${p.key === selectedPattern ? 'selected' : ''}"
-                data-action="select-pattern" data-pattern="${p.key}"
-                style="background:${selectedColor};color:${contrastText(selectedColor)}"
-                aria-label="${p.label}">${p.glyph || '无'}</button>
+    function iconSwatches() {
+      return ICONS.map(ic => `
+        <button class="icon-option ${ic === selectedIcon ? 'selected' : ''}"
+                data-action="select-icon" data-icon="${ic}"
+                aria-label="图标 ${ic}">${ic}</button>
       `).join('');
     }
 
     function refresh() {
       $('#nb-color-list').innerHTML = colorSwatches();
-      $('#nb-pattern-list').innerHTML = patternSwatches();
+      $('#nb-icon-list').innerHTML = iconSwatches();
     }
 
     openModal(`
@@ -625,12 +537,12 @@
           <input type="text" id="nb-title-input" class="form-input" maxlength="12" placeholder="例如：学习本、情绪本…">
         </div>
         <div class="form-group">
-          <label class="form-label">颜色</label>
-          <div class="swatches" id="nb-color-list">${colorSwatches()}</div>
+          <label class="form-label">图标</label>
+          <div class="swatches" id="nb-icon-list">${iconSwatches()}</div>
         </div>
         <div class="form-group">
-          <label class="form-label">纹理</label>
-          <div class="swatches" id="nb-pattern-list">${patternSwatches()}</div>
+          <label class="form-label">颜色</label>
+          <div class="swatches" id="nb-color-list">${colorSwatches()}</div>
         </div>
         <button class="modal-close primary" data-action="create-notebook" id="nb-create-btn">创建</button>
         <button class="modal-close" data-action="close-modal">取消</button>
@@ -644,23 +556,23 @@
       if (t.dataset.action === 'select-color') {
         selectedColor = t.dataset.color;
         refresh();
-      } else if (t.dataset.action === 'select-pattern') {
-        selectedPattern = t.dataset.pattern;
+      } else if (t.dataset.action === 'select-icon') {
+        selectedIcon = t.dataset.icon;
         refresh();
       } else if (t.dataset.action === 'create-notebook') {
-        createNotebook(selectedColor, selectedPattern);
+        createNotebook(selectedColor, selectedIcon);
       }
     });
   }
 
-  function createNotebook(color, pattern) {
+  function createNotebook(color, icon) {
     const input = $('#nb-title-input');
     const title = input.value.trim();
     if (!title) { showToast('给本子起个名字吧'); return; }
     const nb = {
       id: 'nb_' + generateId(), kind: 'custom', title,
-      emoji: '📓', color, pattern,
-      fixed: false, reminder: null, entries: {},
+      emoji: icon, color,
+      fixed: false, entries: {},
       defaultFontSize: 16, defaultColor: '#5b554c'
     };
     state.notebooks.push(nb);
@@ -669,166 +581,6 @@
     openNotebook(nb.id);
     showToast('本子已创建');
   }
-
-  // ===== 提醒设置 =====
-  // 说明：纯前端无法在 App 关闭时可靠弹窗（Notification Triggers 已废弃、未发布；
-  // 真后台推送需服务器，而当前环境又访问不了托管平台）。最稳的纯前端替代是
-  // 把提醒写进手机系统日历（每天重复事件+提醒），由系统准时弹，关 App 也弹。
-  function openRemindersModal() {
-    openModal(`
-      <div class="modal-panel">
-        <div class="modal-title">每日提醒</div>
-        <p class="success-tip">设好时间后，点「添加到日历」即可把每天提醒写入手机系统日历——关掉日记本也会准时弹窗（最可靠）。</p>
-        <div id="reminder-list">
-          ${state.notebooks.map(nb => `
-            <div class="reminder-row">
-              <div class="reminder-name"><span>${nb.emoji}</span> ${escapeHtml(nb.title)}</div>
-              <div class="reminder-controls">
-                <input type="time" class="reminder-time" data-action="update-reminder" data-id="${nb.id}" value="${nb.reminder || ''}">
-                <button class="cal-btn" data-action="add-to-calendar" data-id="${nb.id}" ${nb.reminder ? '' : 'disabled'}>📅 添加到日历</button>
-              </div>
-            </div>
-          `).join('')}
-        </div>
-        <button class="modal-close primary" data-action="close-modal">完成</button>
-      </div>
-    `);
-  }
-
-  function updateReminder(id, value) {
-    const nb = getNotebook(id);
-    if (!nb) return;
-    nb.reminder = value || null;
-    saveState();
-    showToast(`${nb.title} 提醒已${value ? '设为 ' + value : '关闭'}`);
-    // 时间变化时刷新按钮可用状态
-    const btn = modalRoot.querySelector(`.cal-btn[data-id="${id}"]`);
-    if (btn) btn.disabled = !value;
-  }
-
-  // 生成每天重复的日历事件(.ics)，由系统日历负责到点提醒
-  function buildICS(nb) {
-    const [h, m] = nb.reminder.split(':').map(Number);
-    const start = new Date(); start.setHours(h, m, 0, 0);
-    if (start.getTime() <= Date.now()) start.setDate(start.getDate() + 1);
-    const p2 = n => (n < 10 ? '0' : '') + n;
-    const fmt = d => `${d.getFullYear()}${p2(d.getMonth() + 1)}${p2(d.getDate())}T${p2(d.getHours())}${p2(d.getMinutes())}00`;
-    const dtstart = fmt(start);
-    const dtend = fmt(new Date(start.getTime() + 10 * 60000));
-    const summary = nb.title || '日记本提醒';
-    return [
-      'BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//xiaorizi//diary//CN',
-      'CALSCALE:GREGORIAN', 'METHOD:PUBLISH',
-      'BEGIN:VEVENT',
-      `UID:${nb.id}@xiaorizi`, `DTSTAMP:${dtstart}Z`, `DTSTART:${dtstart}`, `DTEND:${dtend}`,
-      'RRULE:FREQ=DAILY', `SUMMARY:${summary}`, 'DESCRIPTION:来自日记本的小提醒',
-      'BEGIN:VALARM', 'TRIGGER:-PT0M', 'ACTION:DISPLAY', `DESCRIPTION:${summary}`, 'END:VALARM',
-      'END:VEVENT', 'END:VCALENDAR'
-    ].join('\r\n');
-  }
-
-  function addToCalendar(nb) {
-    if (!nb.reminder) { showToast('请先设置提醒时间'); return; }
-    const ics = buildICS(nb);
-    const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `日记本-${nb.title || '提醒'}.ics`;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 1500);
-    showToast('已生成日历文件，在日历里点「添加」即可每天提醒 ✓');
-  }
-
-  // ===== 后台推送（Web Push）=====
-  function getDeviceId() {
-    let id = localStorage.getItem(DEVICE_ID_KEY);
-    if (!id) {
-      id = 'dev_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
-      localStorage.setItem(DEVICE_ID_KEY, id);
-    }
-    return id;
-  }
-
-  function urlBase64ToUint8Array(base64String) {
-    const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
-    const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
-    const raw = atob(base64);
-    const arr = new Uint8Array(raw.length);
-    for (let i = 0; i < raw.length; i++) arr[i] = raw.charCodeAt(i);
-    return arr;
-  }
-
-  async function getVapidPublicKey() {
-    const res = await fetch(PUSH_SERVER_URL + '/api/vapid-public-key');
-    const j = await res.json();
-    return j.publicKey;
-  }
-
-  async function subscribeToPush() {
-    if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
-      showToast('当前浏览器不支持后台推送');
-      return false;
-    }
-    let permission = Notification.permission;
-    if (permission === 'default') permission = await Notification.requestPermission();
-    if (permission !== 'granted') { showToast('未授权通知权限'); return false; }
-    try {
-      const reg = await navigator.serviceWorker.ready;
-      const publicKey = await getVapidPublicKey();
-      const sub = await reg.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(publicKey)
-      });
-      const reminders = state.notebooks
-        .filter(nb => nb.reminder)
-        .map(nb => ({ id: nb.id, title: nb.title, time: nb.reminder }));
-      const res = await fetch(PUSH_SERVER_URL + '/api/subscribe', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ deviceId: getDeviceId(), subscription: sub, reminders })
-      });
-      if (!res.ok) { showToast('订阅失败，请检查推送服务地址'); return false; }
-      showToast('已开启后台提醒 ✓');
-      return true;
-    } catch (e) {
-      showToast('订阅失败：' + (e && e.message ? e.message : e));
-      return false;
-    }
-  }
-
-  async function unsubscribeFromPush() {
-    try {
-      await fetch(PUSH_SERVER_URL + '/api/unsubscribe', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ deviceId: getDeviceId() })
-      });
-    } catch (_) {}
-    showToast('已关闭后台提醒');
-  }
-
-  async function pushRemindersUpdate() {
-    if (!PUSH_CONFIGURED) return;
-    if (localStorage.getItem(PUSH_ON_KEY) !== '1') return;
-    try {
-      const reminders = state.notebooks
-        .filter(nb => nb.reminder)
-        .map(nb => ({ id: nb.id, title: nb.title, time: nb.reminder }));
-      await fetch(PUSH_SERVER_URL + '/api/reminders', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ deviceId: getDeviceId(), reminders })
-      });
-    } catch (_) {}
-  }
-
-  // ===== 后台提醒：改用「系统日历 .ics」方案 =====
-  // Chrome 已废弃 Notification Triggers（showTrigger 从未正式发布），纯前端在关 App 时
-  // 无法保证弹通知。因此把"每天提醒"写成可重复日历事件（见 addToCalendar），由手机系统
-  // 日历负责到点弹窗——关掉日记本、甚至没开浏览器也能准时提醒，且无需任何服务器。
 
   // ===== 富文本 / 自定义本辅助 =====
   function firstLine(html) {
@@ -1024,13 +776,19 @@
     const e = getEntries(nb, currentDate(nb)).find(x => x.id === entryId);
     if (!e) return;
     openModal(`
-      <div class="modal-panel reader-modal">
-        <div class="reader-meta">${friendlyDate(currentDate(nb))} · ${friendlyTime(e.createdAt)}</div>
-        <h2 class="reader-title">${escapeHtml(e.title || '无标题')}</h2>
-        <div class="reader-body" style="font-size:${e.fontSize || 16}px;color:${e.color || '#5b554c'}">
-          ${sanitizeHtml(e.html || '')}
+      <div class="modal-panel reader-fullscreen">
+        <div class="reader-header">
+          <button type="button" class="reader-header-btn" data-action="close-modal">关闭</button>
+          <div class="reader-header-title">阅读</div>
+          <button type="button" class="reader-header-btn primary" data-action="edit-entry" data-id="${e.id}">编辑</button>
         </div>
-        <button class="modal-close primary" data-action="close-modal">关闭</button>
+        <div class="reader-scroll">
+          <div class="reader-meta">${friendlyDate(currentDate(nb))} · ${friendlyTime(e.createdAt)}</div>
+          <h2 class="reader-title">${escapeHtml(e.title || '无标题')}</h2>
+          <div class="reader-body" style="font-size:${e.fontSize || 16}px;color:${e.color || '#5b554c'}">
+            ${sanitizeHtml(e.html || '')}
+          </div>
+        </div>
       </div>
     `);
   }
@@ -1162,48 +920,6 @@
     if (e) { e.note = value.trim(); setEntries(nb, date, arr); }
   }
 
-  // ===== 提醒机制 =====
-  function requestNotificationPermission() {
-    if ('Notification' in window && Notification.permission === 'default') {
-      Notification.requestPermission();
-    }
-  }
-
-  function fireReminder(nb) {
-    openModal(`
-      <div class="modal-panel">
-        <div class="reminder-toast">
-          <div class="emoji">${nb.emoji}</div>
-          <h3>该写${escapeHtml(nb.title)}啦</h3>
-          <p>每天留一点时间给自己，慢慢来就好</p>
-        </div>
-        <button class="modal-close primary" data-action="open-from-reminder" data-id="${nb.id}">去记录</button>
-        <button class="modal-close" data-action="close-modal">稍后</button>
-      </div>
-    `);
-    if ('Notification' in window && Notification.permission === 'granted') {
-      try {
-        new Notification('日记本', { body: `该写${nb.title}啦 ~`, icon: 'icons/icon-192.png' });
-      } catch (e) {}
-    }
-  }
-
-  function checkReminders() {
-    const now = new Date();
-    const hhmm = `${pad(now.getHours())}:${pad(now.getMinutes())}`;
-    const today = ymd(now);
-    state.notebooks.forEach(nb => {
-      if (!nb.reminder) return;
-      const key = `${nb.id}-${today}-${hhmm}`;
-      if (nb.reminder === hhmm && !firedReminders.has(key)) {
-        firedReminders.add(key);
-        fireReminder(nb);
-      }
-    });
-  }
-
-  setInterval(checkReminders, 30000);
-
   // ===== 事件委托 =====
   document.addEventListener('click', e => {
     const t = e.target.closest('[data-action]');
@@ -1229,26 +945,12 @@
     else if (a === 'close-modal') closeModal();
     else if (a === 'open-add-notebook') openAddNotebookModal();
     else if (a === 'create-notebook') { /* 在 openAddNotebookModal 内联处理 */ }
-    else if (a === 'open-reminders') openRemindersModal();
-    else if (a === 'add-to-calendar') {
-      const nb = getNotebook(t.dataset.id);
-      if (nb) addToCalendar(nb);
-      else openRemindersModal();
-    }
-    else if (a === 'update-reminder') { /* handled by change */ }
     else if (a === 'add-entry') addEntry();
     else if (a === 'delete-entry') deleteEntry(t.dataset.id);
     else if (a === 'done-entry') doneEntry(t.dataset.id);
     else if (a === 'fail-entry') failEntry(t.dataset.id);
     else if (a === 'confirm-fail') confirmFail(t.dataset.id);
     else if (a === 'revert-entry') revertEntry(t.dataset.id);
-    else if (a === 'open-from-reminder') { closeModal(); openNotebook(t.dataset.id); }
-  });
-
-  document.addEventListener('change', e => {
-    if (e.target.dataset.action === 'update-reminder') {
-      updateReminder(e.target.dataset.id, e.target.value);
-    }
   });
 
   document.addEventListener('input', e => {
@@ -1309,5 +1011,4 @@
 
   // ===== 初始化 =====
   render();
-  setTimeout(checkReminders, 1000);
 })();
